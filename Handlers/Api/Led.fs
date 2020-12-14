@@ -10,7 +10,7 @@ open MongoDB.Driver
 
 module Led =
 
-    let db = MongoClient("mongodb+srv://root:eiCxU8nRYcmYLYyF@cluster0.ibzwj.mongodb.net/proto?retryWrites=true&w=majority").GetDatabase "proto"
+    let db = MongoClient("mongoURI").GetDatabase "proto"
 
     let get next ctx =
         db.GetCollection<Led>("leds").Find(Builders<Led>.Filter.Eq((fun x -> x.Id), 0)).Limit(1).ToEnumerable()
