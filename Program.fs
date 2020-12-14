@@ -2,7 +2,6 @@ module SmartPowerplugEndpoint.App
 
 open System
 open Microsoft.AspNetCore.Builder
-open Microsoft.AspNetCore.Cors.Infrastructure
 open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
@@ -10,17 +9,24 @@ open Microsoft.Extensions.DependencyInjection
 open Giraffe
 open SmartPowerplugEndpoint.HttpHandlers
 
+open SmartPowerplugEndpoint.Handlers.Api
+
 // ---------------------------------
 // Web app
 // ---------------------------------
 
 let webApp =
     choose [
-        subRoute "/api"
+        subRouteCi "/api"
+            //apiHeaders >=>
             (choose [
-                GET >=> choose [
-                    route "/hello" >=> handleGetHello
-                ]
+                subRouteCi "/led"
+                    (choose [
+                        GET >=> Led.get
+                        POST >=> Led.post
+                        PUT >=> Led.put
+                    ])
+                setStatusCode 404 >=> text "Not Found"
             ])
         setStatusCode 404 >=> text "Not Found" ]
 
@@ -36,28 +42,15 @@ let errorHandler (ex : Exception) (logger : ILogger) =
 // Config and Main
 // ---------------------------------
 
-let configureCors (builder : CorsPolicyBuilder) =
-    builder.WithOrigins("http://localhost:8080")
-           .AllowAnyMethod()
-           .AllowAnyHeader()
-           |> ignore
-
-let configureApp (app : IApplicationBuilder) =
-    let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
-    (match env.EnvironmentName with
-    | "Development" -> app.UseDeveloperExceptionPage()
-    | _ -> app.UseGiraffeErrorHandler(errorHandler))
-        .UseHttpsRedirection()
-        .UseCors(configureCors)
+let configureApp (app: IApplicationBuilder) =
+    app.UseGiraffeErrorHandler(errorHandler)
         .UseGiraffe(webApp)
 
-let configureServices (services : IServiceCollection) =
-    services.AddCors()    |> ignore
+let configureServices (services: IServiceCollection) =
     services.AddGiraffe() |> ignore
 
-let configureLogging (builder : ILoggingBuilder) =
-    builder.AddFilter(fun l -> l.Equals LogLevel.Error)
-           .AddConsole()
+let configureLogging (builder: ILoggingBuilder) =
+    builder.AddConsole()
            .AddDebug() |> ignore
 
 [<EntryPoint>]
